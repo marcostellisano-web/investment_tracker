@@ -37,6 +37,10 @@ def _rpc_url() -> str:
     return _load_config().get("rpc_url", "https://api.mainnet-beta.solana.com")
 
 
+def _helius_api_key() -> str:
+    return _load_config().get("helius_api_key", "")
+
+
 @app.route("/")
 def index():
     """Serve the main page, pre-populating saved wallets if any."""
@@ -64,6 +68,7 @@ def fetch():
     body = request.get_json(force=True)
     wallets = body.get("wallets", [])  # [{ address, label }]
     rpc_url = _rpc_url()
+    helius_key = _helius_api_key()
 
     results = []
     all_mints = {}  # mint -> { symbol, name, logo_uri }
@@ -76,7 +81,7 @@ def fetch():
             continue
 
         try:
-            balances = get_all_balances(rpc_url, address)
+            balances = get_all_balances(rpc_url, address, helius_key)
             error = None
         except Exception as e:
             balances = {}

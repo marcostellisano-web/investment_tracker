@@ -44,7 +44,7 @@ _TOKEN_PROGRAMS = [
 ]
 
 
-def get_token_balances(rpc_url: str, address: str) -> dict[str, dict]:
+def get_token_balances(rpc_url: str, address: str, helius_api_key: str = "") -> dict[str, dict]:
     """
     Return all SPL token balances for a wallet across both the original
     Token Program and Token-2022 (Token Extensions Program).
@@ -73,7 +73,7 @@ def get_token_balances(rpc_url: str, address: str) -> dict[str, dict]:
             if amount == 0:
                 continue
 
-            meta = get_token_info(mint)
+            meta = get_token_info(mint, helius_api_key)
             balances[mint] = {
                 "symbol":   meta["symbol"],
                 "name":     meta["name"],
@@ -85,7 +85,7 @@ def get_token_balances(rpc_url: str, address: str) -> dict[str, dict]:
     return balances
 
 
-def get_all_balances(rpc_url: str, address: str) -> dict[str, dict]:
+def get_all_balances(rpc_url: str, address: str, helius_api_key: str = "") -> dict[str, dict]:
     """
     Return native SOL + all SPL token balances for a wallet.
     SOL is included under its canonical mint address.
@@ -96,7 +96,7 @@ def get_all_balances(rpc_url: str, address: str) -> dict[str, dict]:
     if sol > 0:
         all_balances[SOL_MINT] = {**_SOL_META, "amount": sol}
 
-    spl = get_token_balances(rpc_url, address)
+    spl = get_token_balances(rpc_url, address, helius_api_key)
     all_balances.update(spl)
 
     return all_balances

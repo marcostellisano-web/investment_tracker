@@ -18,3 +18,10 @@ wallets:
 # If you hit rate limits, sign up for a free Helius key at https://helius.dev
 # and replace with: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
 rpc_url: "https://api.mainnet-beta.solana.com"
+
+# Optional: Helius API key for maximum token metadata coverage.
+# Token names and logos are resolved from Jupiter + Solana Labs lists first.
+# Any token not found in those lists (e.g. wrapped assets, newer coins) will
+# be looked up on-chain via Helius — this covers literally every SPL token.
+# Get a free key at https://helius.dev (free tier: 1M credits/month)
+# helius_api_key: "your-key-here"
