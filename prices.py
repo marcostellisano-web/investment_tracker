@@ -13,6 +13,19 @@ import requests
 DEXSCREENER_V1_URL = "https://api.dexscreener.com/tokens/v1/solana/{}"
 _CHUNK_SIZE = 30  # v1 endpoint supports up to 30 comma-separated addresses
 
+COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price"
+
+LIVE_PRICE_IDS = {
+    "SOL": "solana",
+    "hSOL": "helius-staked-sol",
+    "jitoSOL": "jito-staked-sol",
+    "ZEC": "zcash",
+    "HYPE": "hyperliquid",
+    "BTC": "bitcoin",
+    "ETH": "ethereum",
+    "USDC": "usd-coin",
+}
+
 
 def get_usd_prices(mints: list[str]) -> dict[str, float]:
     """
@@ -56,3 +69,27 @@ def get_usd_prices(mints: list[str]) -> dict[str, float]:
 
     return prices
 
+
+def get_live_watch_prices() -> dict[str, float | None]:
+    """Return USD prices for the static live-price watchlist."""
+    ids = list(LIVE_PRICE_IDS.values())
+    prices_by_id: dict[str, float | None] = {token_id: None for token_id in ids}
+
+    try:
+        resp = requests.get(
+            COINGECKO_SIMPLE_PRICE_URL,
+            params={"ids": ",".join(ids), "vs_currencies": "usd"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        for token_id in ids:
+            price = (body.get(token_id) or {}).get("usd")
+            prices_by_id[token_id] = float(price) if price is not None else None
+    except Exception:
+        pass
+
+    return {
+        symbol: prices_by_id.get(token_id)
+        for symbol, token_id in LIVE_PRICE_IDS.items()
+    }

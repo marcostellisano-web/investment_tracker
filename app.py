@@ -11,7 +11,7 @@ import yaml
 from flask import Flask, jsonify, render_template, request
 
 from solana import get_all_balances
-from prices import get_usd_prices
+from prices import get_live_watch_prices, get_usd_prices
 
 app = Flask(__name__)
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
@@ -144,6 +144,11 @@ def fetch():
         "hidden_count": hidden_count,
     })
 
+
+@app.route("/api/live-prices")
+def live_prices():
+    """Return live USD prices for the watchlist tickers."""
+    return jsonify({"prices": get_live_watch_prices()})
 
 @app.route("/api/save", methods=["POST"])
 def save():

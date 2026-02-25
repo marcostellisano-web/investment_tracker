@@ -224,6 +224,49 @@
     .dim { color: #94a3b8; }
     .wallet-error { color: #dc2626; font-size: 0.75rem; }
 
+
+    .live-card h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .live-meta {
+      color: #64748b;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .live-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-live { background: #2563eb; color: #eff6ff; }
+    .btn-live:hover { background: #1d4ed8; }
+
+    .btn-copy { background: #ffffff; border-color: #cdd5df; color: #334155; }
+    .btn-copy:hover { border-color: #2563eb; color: #1d4ed8; }
+
+    .live-table-wrap {
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .live-table td { font-size: 0.84rem; }
+
+    .source-note {
+      margin-top: 0.65rem;
+      color: #64748b;
+      font-size: 0.72rem;
+    }
+
     @media (max-width: 760px) {
       .topbar { flex-direction: column; align-items: flex-start; }
       .wallet-row { flex-wrap: wrap; }
@@ -261,12 +304,38 @@
   <div id="status"></div>
 </div>
 
+
+<div class="card live-card">
+  <h2>
+    Live Price Checker
+    <span class="live-meta" id="live-updated">Not fetched yet</span>
+  </h2>
+  <div class="live-actions">
+    <button class="btn-live" id="btn-live-refresh" onclick="refreshLivePrices()">Refresh Live Prices</button>
+    <button class="btn-copy" id="btn-copy-csv" onclick="copyLiveCsv()">Copy CSV for Google Sheets</button>
+  </div>
+  <div class="live-table-wrap">
+    <table class="live-table" id="live-price-table">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>USD Price</th>
+        </tr>
+      </thead>
+      <tbody id="live-price-body"></tbody>
+    </table>
+  </div>
+  <p class="source-note">Source: CoinGecko simple price API. Use “Copy CSV” then paste into Google Sheets.</p>
+</div>
+
 <div id="results"></div>
 </div>
 
 <script>
   const savedWallets = {{ saved_wallets | tojson }};
   const list = document.getElementById("wallet-list");
+  const LIVE_SYMBOLS = ["SOL", "hSOL", "jitoSOL", "ZEC", "HYPE", "BTC", "ETH", "USDC"];
+  let lastLivePrices = {};
 
   function addRow(address = "", label = "") {
     const row = document.createElement("div");
@@ -441,12 +510,73 @@
     document.getElementById("results").innerHTML = html;
   }
 
+
+
+  function formatLivePrice(price) {
+    if (price === null || price === undefined) return "—";
+    if (price >= 1000) return "$" + price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (price >= 1) return "$" + price.toFixed(4);
+    if (price >= 0.01) return "$" + price.toFixed(6);
+    return "$" + price.toFixed(8);
+  }
+
+  function buildLiveCsv(prices) {
+    const lines = ["symbol,usd_price"];
+    LIVE_SYMBOLS.forEach(symbol => {
+      const val = prices[symbol];
+      lines.push(`${symbol},${val ?? ""}`);
+    });
+    return lines.join("\n");
+  }
+
+  function renderLivePrices(prices) {
+    const body = document.getElementById("live-price-body");
+    body.innerHTML = LIVE_SYMBOLS.map(symbol => {
+      const val = prices[symbol] ?? null;
+      return `<tr><td class="token-symbol">${symbol}</td><td>${formatLivePrice(val)}</td></tr>`;
+    }).join("");
+  }
+
+  async function refreshLivePrices() {
+    const btn = document.getElementById("btn-live-refresh");
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/live-prices");
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+      lastLivePrices = data.prices || {};
+      renderLivePrices(lastLivePrices);
+      const now = new Date();
+      document.getElementById("live-updated").textContent = `Updated ${now.toLocaleTimeString()}`;
+    } catch (e) {
+      document.getElementById("live-updated").textContent = `Refresh failed: ${e.message}`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function copyLiveCsv() {
+    if (!Object.keys(lastLivePrices).length) {
+      await refreshLivePrices();
+    }
+    const csv = buildLiveCsv(lastLivePrices);
+    try {
+      await navigator.clipboard.writeText(csv);
+      setStatus("Live price CSV copied to clipboard.", "ok");
+    } catch {
+      setStatus("Could not access clipboard. Copy manually from console output.", "err");
+      console.log(csv);
+    }
+  }
+
   // Boot: load saved wallets or start with one empty row
   if (savedWallets.length) {
     savedWallets.forEach(w => addRow(w.address, w.label));
   } else {
     addRow();
   }
+
+  refreshLivePrices();
 </script>
 </body>
 </html>
