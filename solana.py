@@ -1,32 +1,20 @@
 """
 Solana RPC helpers — fetches SOL balance and all SPL token balances for a wallet.
+Token metadata (name, symbol, logo) is resolved from the Jupiter token list.
 """
 
 import requests
-
-# Mint address -> human-readable symbol for common tokens.
-# The tracker will still show unknown tokens by their mint address,
-# but these get a nice symbol instead.
-KNOWN_TOKENS = {
-    "So11111111111111111111111111111111111111112":  "SOL",
-    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": "USDC",
-    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": "USDT",
-    "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij":  "cbBTC",
-    "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh": "wBTC",
-    "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": "wETH",
-    "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN":  "JUP",
-    "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": "BONK",
-    "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm": "WIF",
-    "MEFNBXixkEbait3xn9bkm8WsJzXtVsaJEn4c8Sam21p":  "MEW",
-    "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3": "PYTH",
-    "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE":  "ORCA",
-    "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey":  "MNDE",
-    "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof":  "RENDER",
-    "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT":  "STEP",
-}
+from token_metadata import get_token_info
 
 SOL_MINT = "So11111111111111111111111111111111111111112"
 LAMPORTS_PER_SOL = 1_000_000_000
+
+_SOL_META = {
+    "symbol":   "SOL",
+    "name":     "Solana",
+    "logo_uri": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+    "decimals": 9,
+}
 
 
 def _rpc(rpc_url: str, method: str, params: list) -> dict:
@@ -55,7 +43,7 @@ def get_token_balances(rpc_url: str, address: str) -> dict[str, dict]:
     Return all SPL token balances for a wallet.
 
     Returns a dict keyed by mint address:
-        { mint: { "symbol": str, "amount": float, "decimals": int } }
+        { mint: { symbol, name, logo_uri, amount, decimals } }
     """
     result = _rpc(
         rpc_url,
@@ -71,17 +59,18 @@ def get_token_balances(rpc_url: str, address: str) -> dict[str, dict]:
     for account in result.get("value", []):
         info = account["account"]["data"]["parsed"]["info"]
         mint = info["mint"]
-        decimals = info["tokenAmount"]["decimals"]
         amount = float(info["tokenAmount"]["uiAmountString"])
 
         if amount == 0:
             continue
 
-        symbol = KNOWN_TOKENS.get(mint, mint[:6] + "...")
+        meta = get_token_info(mint)
         balances[mint] = {
-            "symbol": symbol,
-            "amount": amount,
-            "decimals": decimals,
+            "symbol":   meta["symbol"],
+            "name":     meta["name"],
+            "logo_uri": meta["logo_uri"],
+            "amount":   amount,
+            "decimals": meta["decimals"],
         }
 
     return balances
@@ -96,11 +85,7 @@ def get_all_balances(rpc_url: str, address: str) -> dict[str, dict]:
 
     sol = get_sol_balance(rpc_url, address)
     if sol > 0:
-        all_balances[SOL_MINT] = {
-            "symbol": "SOL",
-            "amount": sol,
-            "decimals": 9,
-        }
+        all_balances[SOL_MINT] = {**_SOL_META, "amount": sol}
 
     spl = get_token_balances(rpc_url, address)
     all_balances.update(spl)

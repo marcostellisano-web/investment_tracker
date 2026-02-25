@@ -66,7 +66,7 @@ def fetch():
     rpc_url = _rpc_url()
 
     results = []
-    all_mints = {}  # mint -> symbol (for building column headers)
+    all_mints = {}  # mint -> { symbol, name, logo_uri }
 
     for w in wallets:
         address = w.get("address", "").strip()
@@ -83,7 +83,11 @@ def fetch():
             error = str(e)
 
         for mint, data in balances.items():
-            all_mints[mint] = data["symbol"]
+            all_mints[mint] = {
+                "symbol":   data["symbol"],
+                "name":     data.get("name", ""),
+                "logo_uri": data.get("logo_uri", ""),
+            }
 
         results.append({
             "label": label,
@@ -94,9 +98,14 @@ def fetch():
 
     # Build aggregated totals
     totals = {}
-    for mint, symbol in all_mints.items():
+    for mint, meta in all_mints.items():
         total = sum(r["balances"].get(mint, {}).get("amount", 0.0) for r in results)
-        totals[mint] = {"symbol": symbol, "total": total}
+        totals[mint] = {
+            "symbol":   meta["symbol"],
+            "name":     meta["name"],
+            "logo_uri": meta["logo_uri"],
+            "total":    total,
+        }
 
     # Sort: SOL first, then by total descending
     sorted_mints = sorted(
