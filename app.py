@@ -120,11 +120,11 @@ def fetch():
         data["usd_price"] = price
         data["usd_value"] = price * data["total"] if price is not None else None
 
-    # Filter: hide tokens whose USD value is known and under $1
+    # Filter: only show tokens with a known USD value >= $1
     total_before_filter = len(totals)
     totals = {
         m: d for m, d in totals.items()
-        if d["usd_value"] is None or d["usd_value"] >= 1.0
+        if d["usd_value"] is not None and d["usd_value"] >= 1.0
     }
     hidden_count = total_before_filter - len(totals)
 
