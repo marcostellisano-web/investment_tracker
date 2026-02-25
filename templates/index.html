@@ -186,6 +186,16 @@
     td { padding: 0.72rem 1.2rem; font-size: 0.875rem; }
     td:not(:first-child) { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+    .summary-row td {
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-weight: 650;
+    }
+
+    .summary-value-row td {
+      background: #f1f5f9;
+    }
+
     .token-cell { display: flex; align-items: center; gap: 0.6rem; }
 
     .token-logo {
@@ -396,7 +406,7 @@
     </td>`;
   }
 
-  function renderResults({ wallets, totals, sorted_mints }) {
+  function renderResults({ wallets, totals, sorted_mints, wallet_totals_usd, portfolio_total_usd, sol_by_wallet, sol_total }) {
     let html = "";
 
     // Show wallet-level errors prominently above the table
@@ -437,7 +447,29 @@
       </tr>`;
     }
 
-    html += `</tbody></table></div>`;
+    const perWalletUsd = Array.isArray(wallet_totals_usd) ? wallet_totals_usd : wallets.map(() => 0);
+    const perWalletSol = Array.isArray(sol_by_wallet) ? sol_by_wallet : wallets.map(() => 0);
+
+    html += `</tbody><tfoot>
+      <tr class="summary-row">
+        <td>Total SOL</td>
+        <td class="total-col">${fmt(sol_total ?? 0)}</td>
+        <td class="dim">—</td>
+        ${wallets.map((w, i) => {
+          const amt = perWalletSol[i] ?? 0;
+          return `<td class="${amt > 0 ? "total-col" : "dim"}">${fmt(amt)}</td>`;
+        }).join("")}
+      </tr>
+      <tr class="summary-row summary-value-row">
+        <td>Portfolio Value</td>
+        <td class="dim">—</td>
+        <td class="value-col">${fmtUsd(portfolio_total_usd ?? 0)}</td>
+        ${wallets.map((w, i) => {
+          const value = perWalletUsd[i] ?? 0;
+          return `<td class="${value > 0 ? "value-col" : "dim"}">${fmtUsd(value)}</td>`;
+        }).join("")}
+      </tr>
+    </tfoot></table></div>`;
     document.getElementById("results").innerHTML = html;
   }
 

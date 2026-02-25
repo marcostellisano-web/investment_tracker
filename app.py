@@ -122,6 +122,21 @@ def fetch():
         data["usd_price"] = price
         data["usd_value"] = price * data["total"] if price is not None else None
 
+    # Summary totals across wallets
+    wallet_totals_usd = []
+    sol_by_wallet = []
+    for r in results:
+        wallet_usd = 0.0
+        for mint, bal in r["balances"].items():
+            price = prices.get(mint)
+            if price is not None:
+                wallet_usd += bal.get("amount", 0.0) * price
+        wallet_totals_usd.append(wallet_usd)
+        sol_by_wallet.append(r["balances"].get(SOL_MINT, {}).get("amount", 0.0))
+
+    portfolio_total_usd = sum(wallet_totals_usd)
+    sol_total = sum(sol_by_wallet)
+
     # Filter: only show tokens with a known USD value >= $1
     total_before_filter = len(totals)
     totals = {
@@ -144,6 +159,10 @@ def fetch():
         "totals": totals,
         "sorted_mints": sorted_mints,
         "hidden_count": hidden_count,
+        "wallet_totals_usd": wallet_totals_usd,
+        "portfolio_total_usd": portfolio_total_usd,
+        "sol_by_wallet": sol_by_wallet,
+        "sol_total": sol_total,
     })
 
 
