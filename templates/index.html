@@ -100,6 +100,18 @@
       font-size: 0.85rem;
       color: #64748b;
     }
+    .error-banner {
+      background: #3b1010;
+      border: 1px solid #7f1d1d;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .error-banner p { color: #fca5a5; font-size: 0.875rem; margin-bottom: 0.25rem; }
+    .error-banner code { color: #f87171; font-size: 0.8rem; font-family: monospace; word-break: break-all; }
     table { width: 100%; border-collapse: collapse; }
     thead th {
       padding: 0.75rem 1.2rem;
@@ -279,22 +291,25 @@
   }
 
   function renderResults({ wallets, totals, sorted_mints }) {
-    if (!sorted_mints.length) {
-      document.getElementById("results").innerHTML =
-        `<div class="card" style="text-align:center;color:#64748b;">No token balances found.</div>`;
-      return;
-    }
+    let html = "";
 
+    // Show wallet-level errors prominently above the table
     const walletErrors = wallets.filter(w => w.error);
-    let html = `<div class="results-card">`;
-
     if (walletErrors.length) {
-      html += `<div class="results-header">`;
+      html += `<div class="error-banner">`;
       walletErrors.forEach(w => {
-        html += `<span class="wallet-error">⚠ ${w.label}: ${w.error}</span><br/>`;
+        html += `<p>⚠ Could not fetch <strong>${w.label}</strong></p><code>${w.error}</code>`;
       });
       html += `</div>`;
     }
+
+    if (!sorted_mints.length) {
+      html += `<div class="card" style="text-align:center;color:#64748b;">No token balances found.</div>`;
+      document.getElementById("results").innerHTML = html;
+      return;
+    }
+
+    html += `<div class="results-card">`;
 
     html += `<table><thead><tr>
       <th>Token</th>

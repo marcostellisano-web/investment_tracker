@@ -48,27 +48,33 @@ def fetch_token_list() -> dict:
     Return the full Jupiter token list as a dict keyed by mint address:
         { mint: { symbol, name, logo_uri, decimals } }
     Fetches from the network only when the local cache is missing or stale.
+    Returns an empty dict (never raises) so a metadata failure never
+    blocks balance fetching.
     """
     cached = _load_cache()
     if cached:
         return cached
 
-    resp = requests.get(JUPITER_TOKEN_LIST_URL, timeout=30)
-    resp.raise_for_status()
+    try:
+        resp = requests.get(JUPITER_TOKEN_LIST_URL, timeout=30)
+        resp.raise_for_status()
 
-    tokens: dict = {}
-    for token in resp.json():
-        mint = token.get("address")
-        if mint:
-            tokens[mint] = {
-                "symbol":   token.get("symbol", ""),
-                "name":     token.get("name", ""),
-                "logo_uri": token.get("logoURI") or "",
-                "decimals": token.get("decimals", 0),
-            }
+        tokens: dict = {}
+        for token in resp.json():
+            mint = token.get("address")
+            if mint:
+                tokens[mint] = {
+                    "symbol":   token.get("symbol", ""),
+                    "name":     token.get("name", ""),
+                    "logo_uri": token.get("logoURI") or "",
+                    "decimals": token.get("decimals", 0),
+                }
 
-    _save_cache(tokens)
-    return tokens
+        _save_cache(tokens)
+        return tokens
+    except Exception:
+        # Metadata is best-effort — balances still show with fallback labels
+        return {}
 
 
 def get_token_info(mint: str) -> dict:

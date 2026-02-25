@@ -38,40 +38,49 @@ def get_sol_balance(rpc_url: str, address: str) -> float:
     return result["value"] / LAMPORTS_PER_SOL
 
 
+_TOKEN_PROGRAMS = [
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",   # Token Program (v1)
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",   # Token-2022 / Token Extensions
+]
+
+
 def get_token_balances(rpc_url: str, address: str) -> dict[str, dict]:
     """
-    Return all SPL token balances for a wallet.
+    Return all SPL token balances for a wallet across both the original
+    Token Program and Token-2022 (Token Extensions Program).
 
     Returns a dict keyed by mint address:
         { mint: { symbol, name, logo_uri, amount, decimals } }
     """
-    result = _rpc(
-        rpc_url,
-        "getTokenAccountsByOwner",
-        [
-            address,
-            {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"},
-            {"encoding": "jsonParsed"},
-        ],
-    )
-
     balances = {}
-    for account in result.get("value", []):
-        info = account["account"]["data"]["parsed"]["info"]
-        mint = info["mint"]
-        amount = float(info["tokenAmount"]["uiAmountString"])
 
-        if amount == 0:
-            continue
+    for program_id in _TOKEN_PROGRAMS:
+        result = _rpc(
+            rpc_url,
+            "getTokenAccountsByOwner",
+            [
+                address,
+                {"programId": program_id},
+                {"encoding": "jsonParsed"},
+            ],
+        )
 
-        meta = get_token_info(mint)
-        balances[mint] = {
-            "symbol":   meta["symbol"],
-            "name":     meta["name"],
-            "logo_uri": meta["logo_uri"],
-            "amount":   amount,
-            "decimals": meta["decimals"],
-        }
+        for account in result.get("value", []):
+            info = account["account"]["data"]["parsed"]["info"]
+            mint = info["mint"]
+            amount = float(info["tokenAmount"]["uiAmountString"])
+
+            if amount == 0:
+                continue
+
+            meta = get_token_info(mint)
+            balances[mint] = {
+                "symbol":   meta["symbol"],
+                "name":     meta["name"],
+                "logo_uri": meta["logo_uri"],
+                "amount":   amount,
+                "decimals": meta["decimals"],
+            }
 
     return balances
 
