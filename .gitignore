@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Don't accidentally commit a config with real wallet addresses
+# (wallets are public, but good hygiene — use config.yaml as a template)
+# Remove this line if you want to track your config in git:
+# config.yaml

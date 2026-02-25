@@ -1,0 +1,20 @@
+# Solana Wallet Tracker - Configuration
+#
+# Add your Solana wallet addresses below.
+# Each wallet can have an optional label so you know which is which.
+# Run: python tracker.py
+
+wallets:
+  - address: "YourFirstWalletAddressHere"
+    label: "Main Wallet"
+
+  - address: "YourSecondWalletAddressHere"
+    label: "Trading Wallet"
+
+  - address: "YourThirdWalletAddressHere"
+    label: "Cold Storage"
+
+# RPC endpoint — the default is free and public.
+# If you hit rate limits, sign up for a free Helius key at https://helius.dev
+# and replace with: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
+rpc_url: "https://api.mainnet-beta.solana.com"
