@@ -22,16 +22,18 @@ SOL_MINT = "So11111111111111111111111111111111111111112"
 def _load_config() -> dict:
     try:
         with open(CONFIG_PATH) as f:
-            return yaml.safe_load(f) or {}
-    except FileNotFoundError:
+            parsed = yaml.safe_load(f) or {}
+    except (FileNotFoundError, yaml.YAMLError, OSError):
         return {}
+
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _save_config(wallets: list[dict]) -> None:
     cfg = _load_config()
     cfg["wallets"] = wallets
     with open(CONFIG_PATH, "w") as f:
-        yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
+        yaml.safe_dump(cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
 def _rpc_url() -> str:
@@ -148,9 +150,26 @@ def fetch():
 @app.route("/api/save", methods=["POST"])
 def save():
     """Persist wallet list to config.yaml."""
-    body = request.get_json(force=True)
+    body = request.get_json(force=True) or {}
     wallets = body.get("wallets", [])
-    _save_config([{"address": w["address"], "label": w.get("label", "")} for w in wallets])
+
+    if not isinstance(wallets, list):
+        return jsonify({"ok": False, "error": "wallets must be a list"}), 400
+
+    cleaned = []
+    for w in wallets:
+        if not isinstance(w, dict):
+            continue
+        address = str(w.get("address", "")).strip()
+        if not address:
+            continue
+        cleaned.append({"address": address, "label": str(w.get("label", "")).strip()})
+
+    try:
+        _save_config(cleaned)
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"Failed to write config: {e}"}), 500
+
     return jsonify({"ok": True})
 
 
