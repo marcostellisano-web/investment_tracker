@@ -157,8 +157,10 @@
     .token-info { display: flex; flex-direction: column; gap: 0.1rem; }
     .token-symbol { font-weight: 700; color: #a78bfa; font-size: 0.9rem; }
     .token-name   { font-size: 0.72rem; color: #475569; }
+    .token-price  { font-size: 0.72rem; color: #4b5563; font-family: monospace; }
 
     .total-col { color: #34d399; font-weight: 600; }
+    .value-col { color: #34d399; font-weight: 600; }
     .dim { color: #374151; }
     .wallet-error { color: #f87171; font-size: 0.75rem; }
   </style>
@@ -256,7 +258,9 @@
       });
       const data = await res.json();
       renderResults(data);
-      setStatus(`Found ${data.sorted_mints.length} token(s) across ${data.wallets.length} wallet(s).`, "ok");
+      const shown = data.sorted_mints.length;
+      const hiddenNote = data.hidden_count > 0 ? ` · ${data.hidden_count} under $1 hidden` : "";
+      setStatus(`Found ${shown} token(s) across ${data.wallets.length} wallet(s)${hiddenNote}.`, "ok");
     } catch (e) {
       setStatus("Request failed: " + e.message, "err");
     } finally {
@@ -272,12 +276,25 @@
     return n.toFixed(8);
   }
 
-  function tokenCell(symbol, name, logoUri) {
+  function fmtUsd(n) {
+    if (n === null || n === undefined) return "—";
+    if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(2) + "M";
+    if (n >= 1_000)     return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (n >= 1)         return "$" + n.toFixed(2);
+    if (n >= 0.0001)    return "$" + n.toFixed(4);
+    return "$" + n.toFixed(6);
+  }
+
+  function tokenCell(symbol, name, logoUri, usdPrice) {
     const logoHtml = logoUri
       ? `<img class="token-logo" src="${logoUri}" alt="${symbol}"
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
          <div class="token-logo-fallback" style="display:none">${symbol.slice(0,3)}</div>`
       : `<div class="token-logo-fallback">${symbol.slice(0,3)}</div>`;
+
+    const priceHtml = usdPrice !== null && usdPrice !== undefined
+      ? `<span class="token-price">${fmtUsd(usdPrice)}</span>`
+      : "";
 
     return `<td>
       <div class="token-cell">
@@ -285,6 +302,7 @@
         <div class="token-info">
           <span class="token-symbol">${symbol}</span>
           ${name ? `<span class="token-name">${name}</span>` : ""}
+          ${priceHtml}
         </div>
       </div>
     </td>`;
@@ -313,15 +331,17 @@
 
     html += `<table><thead><tr>
       <th>Token</th>
-      <th>Total</th>
+      <th>Balance</th>
+      <th>Value</th>
       ${wallets.map(w => `<th>${w.label}</th>`).join("")}
     </tr></thead><tbody>`;
 
     for (const mint of sorted_mints) {
-      const { symbol, name, logo_uri, total } = totals[mint];
+      const { symbol, name, logo_uri, total, usd_price, usd_value } = totals[mint];
       html += `<tr>
-        ${tokenCell(symbol, name, logo_uri)}
+        ${tokenCell(symbol, name, logo_uri, usd_price)}
         <td class="total-col">${fmt(total)}</td>
+        <td class="value-col">${fmtUsd(usd_value)}</td>
         ${wallets.map(w => {
           const amt = w.balances[mint]?.amount ?? 0;
           return `<td class="${amt > 0 ? "" : "dim"}">${fmt(amt)}</td>`;

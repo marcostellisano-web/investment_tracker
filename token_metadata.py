@@ -34,6 +34,20 @@ KNOWN_TOKENS: dict[str, dict] = {
         "logo_uri": "https://coin-images.coingecko.com/coins/images/486/small/circle-zcash-color.png?1696501740",
         "decimals": 8,
     },
+    # BULK Staked SOL — liquid staking token by Bulk + Sanctum
+    "BULKoNSGzxtCqzwTvg5hFJg8fx6dqZRScyXe5LYMfxrn": {
+        "symbol":   "bulkSOL",
+        "name":     "BULK Staked SOL",
+        "logo_uri": "https://arweave.net/tBlyAYsdhdXFdAUO7OeEZdcZ-KYXYgR8DAEPjx7akig",
+        "decimals": 9,
+    },
+    # CASH — Phantom's USD-backed stablecoin (1:1 with USD)
+    "CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH": {
+        "symbol":   "CASH",
+        "name":     "Phantom Cash",
+        "logo_uri": "https://assets.phantom.app/assets/cash/cash_512.png",
+        "decimals": 6,
+    },
 }
 
 _mem_cache: dict | None = None          # merged Jupiter + Solana Labs list

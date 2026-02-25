@@ -11,6 +11,7 @@ import yaml
 from flask import Flask, jsonify, render_template, request
 
 from solana import get_all_balances
+from prices import get_usd_prices
 
 app = Flask(__name__)
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
@@ -112,16 +113,35 @@ def fetch():
             "total":    total,
         }
 
-    # Sort: SOL first, then by total descending
+    # Fetch USD prices and attach value to each token
+    prices = get_usd_prices(list(totals.keys()))
+    for mint, data in totals.items():
+        price = prices.get(mint)
+        data["usd_price"] = price
+        data["usd_value"] = price * data["total"] if price is not None else None
+
+    # Filter: hide tokens whose USD value is known and under $1
+    total_before_filter = len(totals)
+    totals = {
+        m: d for m, d in totals.items()
+        if d["usd_value"] is None or d["usd_value"] >= 1.0
+    }
+    hidden_count = total_before_filter - len(totals)
+
+    # Sort: SOL first, then by USD value descending (unknown price sorts last)
     sorted_mints = sorted(
         totals.keys(),
-        key=lambda m: (0 if m == SOL_MINT else 1, -totals[m]["total"])
+        key=lambda m: (
+            0 if m == SOL_MINT else 1,
+            -(totals[m]["usd_value"] if totals[m]["usd_value"] is not None else -1),
+        )
     )
 
     return jsonify({
         "wallets": results,
         "totals": totals,
         "sorted_mints": sorted_mints,
+        "hidden_count": hidden_count,
     })
 
 
