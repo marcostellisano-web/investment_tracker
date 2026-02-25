@@ -24,4 +24,4 @@ rpc_url: "https://api.mainnet-beta.solana.com"
 # Any token not found in those lists (e.g. wrapped assets, newer coins) will
 # be looked up on-chain via Helius — this covers literally every SPL token.
 # Get a free key at https://helius.dev (free tier: 1M credits/month)
-# helius_api_key: "your-key-here"
+# helius_api_key: "c8afdf1d-1402-4b62-90ac-7b1598eba347"
