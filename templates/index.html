@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solana Portfolio Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #a78bfa;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 760px;
+      margin: 0 auto 1.5rem;
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #94a3b8; }
+
+    /* Wallet rows */
+    .wallet-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+    .wallet-row { display: flex; gap: 0.5rem; align-items: center; }
+    .wallet-row input[type="text"] {
+      background: #0f1117;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      color: #e2e8f0;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .wallet-row input[type="text"]:focus { border-color: #7c3aed; }
+    .wallet-row .addr { flex: 2; font-family: monospace; }
+    .wallet-row .lbl  { flex: 1; }
+    .btn-remove {
+      background: none;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.8rem;
+      transition: all 0.15s;
+    }
+    .btn-remove:hover { border-color: #ef4444; color: #ef4444; }
+
+    .row-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 0.6rem 1.1rem;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary   { background: #7c3aed; color: #fff; }
+    .btn-secondary { background: #1e2130; border: 1px solid #374151; color: #94a3b8; }
+    .btn-save      { background: #065f46; color: #6ee7b7; border: 1px solid #047857; }
+    .btn-add       { background: none; border: 1px dashed #374151; color: #64748b; }
+    .btn-add:hover { border-color: #7c3aed; color: #a78bfa; opacity: 1; }
+
+    /* Status */
+    #status { color: #94a3b8; font-size: 0.82rem; min-height: 1.2rem; margin-top: 0.75rem; }
+    .err { color: #f87171 !important; }
+    .ok  { color: #34d399 !important; }
+
+    /* Results */
+    #results { max-width: 760px; margin: 0 auto; }
+    .results-card {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .results-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #2d3348;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 0.75rem 1.2rem;
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      background: #161824;
+      border-bottom: 1px solid #2d3348;
+    }
+    thead th:not(:first-child) { text-align: right; }
+    tbody tr { border-bottom: 1px solid #1a1f2e; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #252a3a; }
+    td {
+      padding: 0.7rem 1.2rem;
+      font-size: 0.875rem;
+    }
+    td:not(:first-child) { text-align: right; font-family: monospace; }
+    .token-symbol { font-weight: 700; color: #a78bfa; }
+    .total-col { color: #34d399; font-weight: 600; }
+    .dim { color: #374151; }
+    .wallet-error { color: #f87171; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+<div style="max-width:760px;margin:0 auto;">
+  <h1>Solana Portfolio Tracker</h1>
+  <p class="subtitle">Paste your wallet addresses below — no file editing required.</p>
+</div>
+
+<div class="card">
+  <h2>Wallets</h2>
+  <div class="wallet-list" id="wallet-list"></div>
+
+  <div class="row-actions">
+    <button class="btn-add" onclick="addRow()">+ Add wallet</button>
+  </div>
+
+  <div style="display:flex;gap:0.5rem;margin-top:1.25rem;flex-wrap:wrap;">
+    <button class="btn-primary" id="btn-fetch" onclick="fetchBalances()">Fetch Balances</button>
+    <button class="btn-save"    id="btn-save"  onclick="saveWallets()">Save Addresses</button>
+    <button class="btn-secondary"              onclick="clearAll()">Clear</button>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<div id="results"></div>
+
+<script>
+  const savedWallets = {{ saved_wallets | tojson }};
+  const list = document.getElementById("wallet-list");
+
+  function addRow(address = "", label = "") {
+    const row = document.createElement("div");
+    row.className = "wallet-row";
+    row.innerHTML = `
+      <input class="addr" type="text" placeholder="Wallet address" value="${address}" spellcheck="false" autocomplete="off" />
+      <input class="lbl"  type="text" placeholder="Label (optional)" value="${label}" />
+      <button class="btn-remove" onclick="this.closest('.wallet-row').remove()">✕</button>`;
+    list.appendChild(row);
+    if (!address) row.querySelector(".addr").focus();
+  }
+
+  function getWallets() {
+    return [...list.querySelectorAll(".wallet-row")].map(row => ({
+      address: row.querySelector(".addr").value.trim(),
+      label:   row.querySelector(".lbl").value.trim(),
+    })).filter(w => w.address);
+  }
+
+  function clearAll() {
+    list.innerHTML = "";
+    document.getElementById("results").innerHTML = "";
+    setStatus("");
+    addRow();
+  }
+
+  function setStatus(msg, cls = "") {
+    const el = document.getElementById("status");
+    el.textContent = msg;
+    el.className = cls;
+  }
+
+  async function saveWallets() {
+    const wallets = getWallets();
+    if (!wallets.length) { setStatus("Nothing to save.", "err"); return; }
+    setStatus("Saving...");
+    const res = await fetch("/api/save", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ wallets }) });
+    const data = await res.json();
+    setStatus(data.ok ? `Saved ${wallets.length} wallet(s) to config.yaml — they'll load automatically next time.` : "Save failed.", data.ok ? "ok" : "err");
+  }
+
+  async function fetchBalances() {
+    const wallets = getWallets();
+    if (!wallets.length) { setStatus("Add at least one wallet address.", "err"); return; }
+
+    document.getElementById("btn-fetch").disabled = true;
+    setStatus(`Fetching ${wallets.length} wallet(s)...`);
+    document.getElementById("results").innerHTML = "";
+
+    try {
+      const res = await fetch("/api/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallets }),
+      });
+      const data = await res.json();
+      renderResults(data);
+      setStatus(`Found ${data.sorted_mints.length} token(s) across ${data.wallets.length} wallet(s).`, "ok");
+    } catch (e) {
+      setStatus("Request failed: " + e.message, "err");
+    } finally {
+      document.getElementById("btn-fetch").disabled = false;
+    }
+  }
+
+  function fmt(n) {
+    if (n === 0) return "—";
+    if (n >= 1000)  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (n >= 1)     return n.toFixed(4);
+    if (n >= 0.0001) return n.toFixed(6);
+    return n.toFixed(8);
+  }
+
+  function renderResults({ wallets, totals, sorted_mints }) {
+    if (!sorted_mints.length) {
+      document.getElementById("results").innerHTML = `<div class="card" style="text-align:center;color:#64748b;">No token balances found.</div>`;
+      return;
+    }
+
+    const walletErrors = wallets.filter(w => w.error);
+
+    let html = `<div class="results-card">`;
+
+    if (walletErrors.length) {
+      html += `<div class="results-header">`;
+      walletErrors.forEach(w => {
+        html += `<span class="wallet-error">⚠ ${w.label}: ${w.error}</span><br/>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `<table><thead><tr>
+      <th>Token</th>
+      <th>Total</th>
+      ${wallets.map(w => `<th>${w.label}</th>`).join("")}
+    </tr></thead><tbody>`;
+
+    for (const mint of sorted_mints) {
+      const { symbol, total } = totals[mint];
+      html += `<tr>
+        <td><span class="token-symbol">${symbol}</span></td>
+        <td class="total-col">${fmt(total)}</td>
+        ${wallets.map(w => {
+          const amt = w.balances[mint]?.amount ?? 0;
+          return `<td class="${amt > 0 ? "" : "dim"}">${fmt(amt)}</td>`;
+        }).join("")}
+      </tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+    document.getElementById("results").innerHTML = html;
+  }
+
+  // Boot: load saved wallets or start with one empty row
+  if (savedWallets.length) {
+    savedWallets.forEach(w => addRow(w.address, w.label));
+  } else {
+    addRow();
+  }
+</script>
+</body>
+</html>
