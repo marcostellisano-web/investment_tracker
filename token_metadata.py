@@ -23,6 +23,19 @@ JUPITER_TOKEN_LIST_URL = "https://token.jup.ag/all"
 SOLANA_TOKEN_LIST_URL  = "https://raw.githubusercontent.com/solana-labs/token-list/main/src/tokens/solana.tokenlist.json"
 CACHE_TTL = 86_400  # 24 hours
 
+# ── Manual overrides ───────────────────────────────────────────────────────
+# Tokens absent from all public lists (e.g. bridged/wrapped assets).
+# These are checked FIRST and always win. Add new entries here as needed.
+KNOWN_TOKENS: dict[str, dict] = {
+    # Zcash — Portal (Wormhole) wrapped ZEC on Solana
+    "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS": {
+        "symbol":   "ZEC",
+        "name":     "Zcash (Portal)",
+        "logo_uri": "https://coin-images.coingecko.com/coins/images/486/small/circle-zcash-color.png?1696501740",
+        "decimals": 8,
+    },
+}
+
 _mem_cache: dict | None = None          # merged Jupiter + Solana Labs list
 _helius_mem_cache: dict = {}            # per-token Helius results (this process)
 
@@ -176,10 +189,16 @@ def get_token_info(mint: str, helius_api_key: str = "") -> dict:
     """
     Look up metadata for a single mint address.
 
-    With Helius key:    Helius first → Jupiter/Solana Labs fallback
-    Without Helius key: Jupiter/Solana Labs list only
+    Priority:
+      1. KNOWN_TOKENS override dict   (hardcoded, always wins)
+      2. Helius getAsset              (when key is set)
+      3. Jupiter + Solana Labs list   (cached bulk fallback)
     """
-    # Helius first when key is set — it covers every token
+    # 1. Manual overrides always win
+    if mint in KNOWN_TOKENS:
+        return KNOWN_TOKENS[mint]
+
+    # 2. Helius first when key is set — it covers every token
     if helius_api_key:
         info = _get_token_info_helius(mint, helius_api_key)
         if info:
