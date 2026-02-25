@@ -8,10 +8,10 @@ import json
 import os
 
 import yaml
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from solana import get_all_balances
-from prices import get_usd_prices
+from prices import get_live_watch_prices, get_usd_prices
 
 app = Flask(__name__)
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
@@ -143,6 +143,50 @@ def fetch():
         "sorted_mints": sorted_mints,
         "hidden_count": hidden_count,
     })
+
+
+def _find_symbol_case_insensitive(symbol: str, prices: dict[str, float | None]) -> str | None:
+    target = symbol.strip().lower()
+    for key in prices.keys():
+        if key.lower() == target:
+            return key
+    return None
+
+
+@app.route("/api/live-prices")
+def live_prices():
+    """Return live USD prices for the watchlist tickers."""
+    return jsonify({"prices": get_live_watch_prices()})
+
+
+@app.route("/api/live-price")
+def live_price_single():
+    """Return one watchlist price as JSON/text/CSV for Google Sheets usage."""
+    prices = get_live_watch_prices()
+    symbol = request.args.get("symbol", "").strip()
+    response_format = request.args.get("format", "csv").strip().lower()
+
+    if not symbol:
+        return jsonify({"error": "missing symbol query param"}), 400
+
+    resolved_symbol = _find_symbol_case_insensitive(symbol, prices)
+    if resolved_symbol is None:
+        return jsonify({
+            "error": f"unsupported symbol '{symbol}'",
+            "supported_symbols": list(prices.keys()),
+        }), 400
+
+    price = prices.get(resolved_symbol)
+
+    if response_format == "json":
+        return jsonify({"symbol": resolved_symbol, "usd_price": price})
+
+    if response_format == "text":
+        value = "" if price is None else str(price)
+        return Response(value + "\n", content_type="text/plain; charset=utf-8")
+
+    csv_text = f"symbol,usd_price\n{resolved_symbol},{'' if price is None else price}\n"
+    return Response(csv_text, content_type="text/csv; charset=utf-8")
 
 
 @app.route("/api/save", methods=["POST"])
