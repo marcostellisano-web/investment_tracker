@@ -229,17 +229,32 @@
   async function saveWallets() {
     const wallets = getWallets();
     if (!wallets.length) { setStatus("Nothing to save.", "err"); return; }
+
+    const saveBtn = document.getElementById("btn-save");
+    saveBtn.disabled = true;
     setStatus("Saving...");
-    const res = await fetch("/api/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallets }),
-    });
-    const data = await res.json();
-    setStatus(
-      data.ok ? `Saved ${wallets.length} wallet(s) — they'll load automatically next time.` : "Save failed.",
-      data.ok ? "ok" : "err"
-    );
+
+    try {
+      const res = await fetch("/api/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallets }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
+
+      const data = await res.json();
+      setStatus(
+        data.ok ? `Saved ${wallets.length} wallet(s) — they'll load automatically next time.` : "Save failed.",
+        data.ok ? "ok" : "err"
+      );
+    } catch (e) {
+      setStatus("Save failed: " + e.message, "err");
+    } finally {
+      saveBtn.disabled = false;
+    }
   }
 
   async function fetchBalances() {

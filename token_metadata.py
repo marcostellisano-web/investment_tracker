@@ -22,11 +22,26 @@ import requests
 JUPITER_TOKEN_LIST_URL = "https://token.jup.ag/all"
 SOLANA_TOKEN_LIST_URL  = "https://raw.githubusercontent.com/solana-labs/token-list/main/src/tokens/solana.tokenlist.json"
 CACHE_TTL = 86_400  # 24 hours
+DEFAULT_LOGO_TEMPLATE = "https://api.dicebear.com/9.x/identicon/svg?seed={seed}"
 
 # ── Manual overrides ───────────────────────────────────────────────────────
 # Tokens absent from all public lists (e.g. bridged/wrapped assets).
 # These are checked FIRST and always win. Add new entries here as needed.
 KNOWN_TOKENS: dict[str, dict] = {
+    # hSOL — Helium liquid staking token (Sanctum ecosystem)
+    "he1iusmfkpAdwvxLNGV8Y1iSbj4rUy6yMhEA3fotn9A": {
+        "symbol":   "hSOL",
+        "name":     "Helium Staked SOL",
+        "logo_uri": "https://arweave.net/1lca4McexqMzaBsR8zV9ic2NfV86G9A7dP37wR4Df8A",
+        "decimals": 9,
+    },
+    # JitoSOL — Jito liquid staking token
+    "J1toso1uCvYwQ7kC9x7f9x1fKJ3L7hPwrKyYtU6wR6Q": {
+        "symbol":   "JitoSOL",
+        "name":     "Jito Staked SOL",
+        "logo_uri": "https://storage.googleapis.com/token-metadata/JitoSOL-256.png",
+        "decimals": 9,
+    },
     # Zcash — Portal (Wormhole) wrapped ZEC on Solana
     "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS": {
         "symbol":   "ZEC",
@@ -52,6 +67,19 @@ KNOWN_TOKENS: dict[str, dict] = {
 
 _mem_cache: dict | None = None          # merged Jupiter + Solana Labs list
 _helius_mem_cache: dict = {}            # per-token Helius results (this process)
+
+
+def _default_logo_uri(mint: str) -> str:
+    """Return a deterministic fallback icon URL for any mint."""
+    return DEFAULT_LOGO_TEMPLATE.format(seed=mint)
+
+
+def _with_fallback_logo(mint: str, token: dict) -> dict:
+    """Ensure token metadata always has a non-empty logo URI."""
+    normalized = dict(token)
+    if not normalized.get("logo_uri"):
+        normalized["logo_uri"] = _default_logo_uri(mint)
+    return normalized
 
 
 # ── Cache path (writable location) ────────────────────────────────────────
@@ -210,22 +238,22 @@ def get_token_info(mint: str, helius_api_key: str = "") -> dict:
     """
     # 1. Manual overrides always win
     if mint in KNOWN_TOKENS:
-        return KNOWN_TOKENS[mint]
+        return _with_fallback_logo(mint, KNOWN_TOKENS[mint])
 
     # 2. Helius first when key is set — it covers every token
     if helius_api_key:
         info = _get_token_info_helius(mint, helius_api_key)
         if info:
-            return info
+            return _with_fallback_logo(mint, info)
 
     # Bulk list fallback (or primary when no Helius key)
     tokens = fetch_token_list()
     if mint in tokens:
-        return tokens[mint]
+        return _with_fallback_logo(mint, tokens[mint])
 
-    return {
+    return _with_fallback_logo(mint, {
         "symbol":   mint[:6] + "...",
         "name":     "Unknown Token",
         "logo_uri": "",
         "decimals": 0,
-    }
+    })
